@@ -1,0 +1,25 @@
+{
+	"pluginName": "ADB工具",
+	"description": "adb常用命令，需要自行配置好adb和aapt环境",
+	"main": "index.html",
+	"version": "0.0.3",
+	"author": "Yutou",
+	 "logo": "logo.png",
+	"preload":"preload.js", 
+	 "pluginSetting":{
+         "single": true
+    },
+	"features": [
+	    {
+	        "code": "adb",
+	        "cmds":["adb",{
+			"label":"adb install apk",
+			"type":"files",
+			 "fileType": "file",
+                "minNum": 1,
+                "maxNum": 1
+		}]
+	    }
+
+	]
+}

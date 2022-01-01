@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="js/jquery-3.2.1.js"></script>
+    <script src="layui/layui.all.js"></script>
+    <link rel="stylesheet" href="layui/css/layui.css">
+    <link rel="stylesheet" href="layui/css/modules/layer/default/layer.css">
+    <link rel="stylesheet" href="layui/css/layui.css" media="all">
+</head>
+
+<body>
+<form class="layui-form">
+    <input id="text" name="iput" required lay-verify="required" placeholder="请输入指令" autocomplete="off"
+           class="layui-input"/>
+    <label class="layui-form-label">设备列表</label>
+    <select id="device" name="device" lay-verify="" lay-filter="dev">
+    </select>
+    <input id="btn" name="btn" type="button" value="执行" class="layui-btn layui-btn-normal"/>
+
+    <button type="button" class="layui-btn" id="upload">
+        <i class="layui-icon">&#xe67c;</i>上传APK
+    </button>
+    <input id="flush" name="flush" type="button" value="刷新设备列表" class="layui-btn"/>
+    <input id="showPack" name="showPack" type="button" value="已安装列表" class="layui-btn"/>
+    <input id="show" name="show" type="button" value="查看apk信息" class="layui-btn"/>
+    <input id="showTopActivity" name="showTopActivity" type="button" value="设备当前顶层Activity" class="layui-btn"/>
+
+    </p>
+    <input id="showSignInfo" name="showSignInfo" type="button" value="查看签名" class="layui-btn"/>
+    <input id="screenShot" name="screenShot" type="button" value="截图" class="layui-btn"/>
+
+    </p>
+    <label class="layui-form-label">日志：</label>
+
+    <textarea name="log" id="log" required lay-verify="required" placeholder="等待输出" class="layui-textarea"
+              style="height: 350px;"></textarea>
+
+</form>
+</body>
+
+<script>
+
+    function log(data) {
+        console.log("日志输出：" + data)
+        $('#log').val($('#log').val() + "\n" + data)
+    }
+
+    function install() {
+        log("开始执行：" + $('#text').val());
+        window.adb($('#text').val(), (stdout) => {
+            log(stdout);
+
+        })
+    }
+
+    function getScreenFile() {
+        return window.utools.getPath('downloads') + "/screen.png";
+    }
+
+
+    var devices = []
+    var path;
+    layui.use('form', function () {
+        var form = layui.form;
+        var upload = layui.upload;
+        form.render();
+        form.on('select(dev)', function (data) {
+            $('#text').val("adb -s " + data.value + " install \"" + path + "\"");
+        });
+        var uploadInst = upload.render({
+            elem: '#upload' //绑定元素
+            ,
+            url: '/upload/', //上传接口
+            accept: 'file',
+            auto: false,
+
+            choose: function (obj) {
+                //上传完毕回调
+                var files = obj.pushFile();
+                obj.preview(function (index, file, result) {
+                    path = file.path;
+                    var dv = devices[0].split(/\s+/);
+                    $('#text').val("adb -s " + dv[0] + " install \"" + path + "\"");
+
+                });
+            },
+            error: function () {
+                //请求异常回调
+            }
+        });
+    })
+    $('#btn').click(function () {
+        install();
+    })
+    $('#flush').click(function () {
+        reload()
+    })
+
+    reload()
+    utools.onPluginEnter(({
+                              code,
+                              type,
+                              payload
+                          }) => {
+        path = "";
+
+        if (type == 'files') {
+            path = payload[0].path;
+            console.log("检测到文件:" + path)
+            log("准备安装:" + path)
+        }
+        reload()
+    })
+
+
+    function reload() {
+        chinese = [];
+        $('#device').empty();
+        $('#log').val('');
+
+        window.adb('adb devices', (stdout, error) => {
+            if (error == true) {
+                log(stdout)
+                return;
+            }
+			const out = stdout.split("\n");
+			var j = 0;
+            for (var i = 1; i < out.length; i++) {
+                if (out[i].length > 5) {
+                    devices[j++] = out[i];
+                }
+            }
+            for (var i = 0; i < devices.length; i++) {
+                var dv = devices[i].split(/\s+/);
+                $('#device').append("<option value='" + dv[0] + "'>" + devices[i] + "</option>");
+            }
+            layui.form.render();
+            if (devices.length == 1) {
+                var dv = devices[0].split(/\s+/);
+                $('#text').val("adb -s " + dv[0] + " -d -r install \"" + path + "\"");
+
+                if (path == null || path == "") {
+                    $('#text').val("adb -s " + dv[0] + " ");
+                    return;
+                }
+                log("开始安装：" + path);
+                /* window.adb("adb -s " + dv[0] + " install " + path, (stdout,error) => {
+                    console.log("ADB err:"+err)
+                    console.log("ADB stdout:"+stdout)
+                    console.log("ADB stderr:"+stderr)
+                    log(stdout,error);
+                }) */
+                install();
+            } else if (devices.length > 1) {
+                log("请选择设备");
+                if (path == null || path == "") {
+                    $('#text').val("adb -s " + dv[0] + " ");
+                } else {
+                    $('#text').val("adb -s " + dv[0] + " install \"" + path + "\"");
+                }
+            } else {
+                log("没有连接设备");
+            }
+        })
+    }
+
+    $('#showPack').click(function () {
+        window.adb("adb shell pm list package", (stdout, error) => {
+            if (error == true) {
+                log(stdout)
+                return;
+            }
+            log(stdout)
+        })
+    })
+    $('#show').click(function () {
+        console.log("aapt dump badging \"" + path + "\"")
+        window.adb("keytool -printcert -file \"" + path + "\"", (stdout, error) => {
+            if (error == true) {
+                log(stdout)
+                return;
+            }
+            log(stdout)
+            window.adb("keytool -printcert -file x \"" + path + "\" AndroidManifest.xml", (stdout, error) => {
+                log(stdout)
+            })
+        })
+    })
+    $('#showSignInfo').click(function () {
+        console.log("showSignInfo \"" + path + "\"")
+        window.adb("apksigner verify -v --print-certs \"" + path + "\"", (stdout, error) => {
+            if (error == true) {
+                log(stdout)
+                return;
+            }
+            log(stdout)
+        })
+    })
+    $('#showTopActivity').click(function () {
+        window.adb("adb shell dumpsys window | findstr mCurrentFocus", (data, error) => {
+            log(data)
+        })
+    })
+    $('#screenShot').click(function () {
+		log("url=" + getRootPath())
+        log("正在截图...")
+        window.adb("adb shell screencap ./sdcard/screen.png", (stdout, error) => {
+            log("截图成功，正在保存...")
+            window.adb("adb pull ./sdcard/screen.png " + getScreenFile(), (stdout, error) => {
+                log(stdout)
+                copyImage = window.utools.copyImage(getScreenFile())
+                if (copyImage) {
+                    window.utools.showNotification('截图成功，已复制到剪贴板')
+                    log("已复制到剪贴板，并保存到目录：" + getScreenFile())
+                } else {
+                    log("复制到剪贴板失败")
+
+                }
+
+
+            })
+        })
+
+
+    })
+</script>
+
+</html>
