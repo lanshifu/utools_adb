@@ -16,7 +16,7 @@ window.getRootPath = function(){
 }
 
 window.adb = function (ext,fun) {
-	ext = ext.replace('adb',window.getRootPath() + "/tools/adb")
+	ext = ext.replace('adb',"/Users/lanxiaobin/Library/Android/sdk/platform-tools/adb")
 	ext = ext.replace('apksigner',window.getRootPath() + "/tools/apksigner")
 	ext = ext.replace('findstr',"grep")
 	ext = ext.replace('aapt',window.getRootPath() + "/tools/aapt")

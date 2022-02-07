@@ -29,6 +29,7 @@
     </p>
     <input id="showSignInfo" name="showSignInfo" type="button" value="查看签名" class="layui-btn"/>
     <input id="screenShot" name="screenShot" type="button" value="截图" class="layui-btn"/>
+    <input id="screenRecord" name="screenRecord" type="button" value="录屏" class="layui-btn"/>
 
     </p>
     <label class="layui-form-label">日志：</label>
@@ -56,6 +57,10 @@
 
     function getScreenFile() {
         return window.utools.getPath('downloads') + "/screen.png";
+    }
+
+    function getScreenRecordFile() {
+        return window.utools.getPath('downloads') + "/record_screen.mp4";
     }
 
 
@@ -224,6 +229,28 @@
 
 
     })
+
+    $('#screenRecord').click(function () {
+		log("url=" + getRootPath())
+        log("正在录制...")
+        window.adb("adb shell screenrecord --time-limit 10 --bit-rate 600000  /sdcard/record_screen.mp4", (stdout, error) => {
+            log("录制结束，保存中...error="+error)
+            window.adb("adb pull /sdcard/record_screen.mp4 " + getScreenRecordFile(), (stdout, error) => {
+                log(stdout)
+                copyImage = window.utools.copyFile(getScreenRecordFile())
+                if (copyImage) {
+                    // window.utools.showNotification('已复制到剪贴板')
+                    log("已保存到目录：" + getScreenRecordFile())
+                } else {
+                    log("复制到剪贴板失败")
+                }
+            })
+        })
+
+
+    })
+
+    
 </script>
 
 </html>
